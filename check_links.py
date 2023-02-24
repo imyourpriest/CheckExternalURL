@@ -15,30 +15,43 @@ time_delay = 60 / request_limit
 # Initialize an empty list to store the links and their corresponding pages
 links = [(base_url, base_url)]
 
+# Initialize a set to store visited links
+visited_links = set()
+
 # Loop through each page of the website and extract the links
-while True:
-    print(f"Requesting {links[0][0]}...")
+while links:
+    # Get the next link to check
+    link, page = links.pop(0)
+
+    # Check if the link has already been visited
+    if link in visited_links:
+        continue
+
+    print(f"Requesting {link}...")
 
     # Set the start time of the request
     start_time = time.time()
 
     try:
         # Make the HTTP request and retrieve the page HTML
-        response = requests.get(links[0][0])
+        response = requests.get(link)
         html_page = response.content
 
         # Parse the HTML using BeautifulSoup
         soup = BeautifulSoup(html_page, 'html.parser')
 
         # Extract the links from the HTML using BeautifulSoup
-        for link in soup.findAll('a'):
-            href = link.get('href')
+        for link_tag in soup.findAll('a'):
+            href = link_tag.get('href')
             if href and href.startswith(base_url):
-                links.append((href, links[0][0]))
+                links.append((href, link))
+
+        # Add the current link to the set of visited links
+        visited_links.add(link)
 
     except (requests.exceptions.RequestException) as error:
         # Handle errors that occur during the request process
-        print(f"Error while requesting {links[0][0]}: {error}")
+        print(f"Error while requesting {link}: {error}")
 
     # Wait for the remaining time until the request limit is reached
     end_time = time.time()
@@ -46,33 +59,28 @@ while True:
     if time_elapsed < time_delay:
         time.sleep(time_delay - time_elapsed)
 
-    # Break out of the loop if all pages have been checked
-    links.pop(0)
-    if len(links) == 0:
-        break
-    
-    print(f"Found {len(links)} links so far...")
+    print(f"Visited {len(visited_links)} links so far...")
 
 # Save the checked links to a CSV file
-print(f"Checking {len(links)} links...")
+print(f"Checking {len(visited_links)} links...")
 with open('URL_links.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['Link', 'Page Found On', 'Status'])
 
-    for link in links:
-        if ".com" not in link[0]:
-            print(f"Checking {link[0]}...")
+    for link in visited_links:
+        if ".com" not in link:
+            print(f"Checking {link}...")
             try:
                 # Make the HTTP request and check the response code
-                response = requests.head(link[0])
+                response = requests.head(link)
                 status = response.status_code
 
             except (requests.exceptions.RequestException) as error:
                 # Handle errors that occur during the request process
                 status = str(error)
-                print(f"Error while checking {link[0]}: {error}")
+                print(f"Error while checking {link}: {error}")
 
             # Write the link, page found on, and status to the CSV file
-            writer.writerow([link[0], link[1], status])
+            writer.writerow([link, '', status])
 
 print("Done!")
