@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import time
 
 # Set the base URL to crawl
-base_url = '.com'
+base_url = 'https://.com'
 
 # Set the limit of requests per minute
 request_limit = 10
@@ -12,19 +12,19 @@ request_limit = 10
 # Set the time delay between requests
 time_delay = 60 / request_limit
 
-# Initialize an empty list to store the links
-links = [base_url]
+# Initialize an empty list to store the links and their corresponding pages
+links = [(base_url, base_url)]
 
 # Loop through each page of the website and extract the links
 while True:
-    print(f"Requesting {links[0]}...")
+    print(f"Requesting {links[0][0]}...")
 
     # Set the start time of the request
     start_time = time.time()
 
     try:
         # Make the HTTP request and retrieve the page HTML
-        response = requests.get(links[0])
+        response = requests.get(links[0][0])
         html_page = response.content
 
         # Parse the HTML using BeautifulSoup
@@ -34,11 +34,11 @@ while True:
         for link in soup.findAll('a'):
             href = link.get('href')
             if href and href.startswith(base_url):
-                links.append(href)
+                links.append((href, links[0][0]))
 
     except (requests.exceptions.RequestException) as error:
         # Handle errors that occur during the request process
-        print(f"Error while requesting {links[0]}: {error}")
+        print(f"Error while requesting {links[0][0]}: {error}")
 
     # Wait for the remaining time until the request limit is reached
     end_time = time.time()
@@ -57,22 +57,22 @@ while True:
 print(f"Checking {len(links)} links...")
 with open('URL_links.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['Link', 'Status'])
+    writer.writerow(['Link', 'Page Found On', 'Status'])
 
     for link in links:
-        if ".com" not in link:
-            print(f"Checking {link}...")
+        if ".com" not in link[0]:
+            print(f"Checking {link[0]}...")
             try:
                 # Make the HTTP request and check the response code
-                response = requests.head(link)
+                response = requests.head(link[0])
                 status = response.status_code
 
             except (requests.exceptions.RequestException) as error:
                 # Handle errors that occur during the request process
                 status = str(error)
-                print(f"Error while checking {link}: {error}")
+                print(f"Error while checking {link[0]}: {error}")
 
-            # Write the link and status to the CSV file
-            writer.writerow([link, status])
+            # Write the link, page found on, and status to the CSV file
+            writer.writerow([link[0], link[1], status])
 
 print("Done!")
